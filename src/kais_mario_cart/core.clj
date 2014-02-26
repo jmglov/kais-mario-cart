@@ -1,18 +1,37 @@
 (ns kais-mario-cart.core
-  (:require [seesaw.core :as gui]))
+  (:require [clojure.java.io :as io])
+  (:import (java.awt Color Dimension)
+           (javax.swing JFrame JOptionPane JPanel Timer)
+           (java.awt.event ActionListener KeyEvent KeyListener)))
 
-(defn make-frame []
-  (gui/frame
-   :title "Kai's Mario Cart"))
+(defn frame []
+  (JFrame. "Kai's Mario Cart"))
 
-(defn show-frame [f]
-  (-> f
-      gui/pack!
-      gui/show!
-      (gui/config! :size [1263 :by 892])))
+(defn panel []
+  (proxy [JPanel ActionListener KeyListener] []
+    (paintComponent [g]
+      (proxy-super paintComponent g))
+    (actionPerformed [e]
+      (.repaint this))
+    (keyPressed [e])
+    (getPreferredSize []
+      (Dimension. 1263 893))
+    (keyReleased [e])
+    (keyTyped [e])))
 
-(defn run []
-  (gui/invoke-later
-   (-> (make-frame)
-       show-frame
-       (gui/config! :on-close :exit))))
+(defn sprite
+  "Read a BufferedImage from a file"
+  [file]
+  (javax.imageio.ImageIO/read (io/input-stream (io/resource file))))
+
+(defn show-panel! [frame panel]
+  (doto panel
+    (.setFocusable true)
+    (.addKeyListener panel))
+  (doto frame
+    (.add panel)
+    (.pack)
+    (.setVisible true)))
+
+(defn draw-image! [widget image x y]
+  (-> widget .getGraphics (.drawImage image x y widget)))
