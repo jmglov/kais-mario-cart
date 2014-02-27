@@ -7,11 +7,11 @@
 (defn frame []
   (JFrame. "Kai's Mario Cart"))
 
-(defn panel [painters]
+(defn panel [on-paint]
   (proxy [JPanel ActionListener KeyListener] []
     (paintComponent [g]
       (proxy-super paintComponent g)
-      (doseq [painter painters] (painter g this)))
+      (on-paint g this))
     (actionPerformed [e]
       (.repaint this))
     (keyPressed [e])
@@ -39,3 +39,9 @@
      (-> graphics (.drawImage image x y widget)))
   ([widget image x y]
      (-> widget .getGraphics (draw-image! widget image x y))))
+
+(defn draw! [world]
+  (fn [graphics widget]
+    (apply draw-image! graphics widget (map (:background world) [:image :y :x]))
+    (doseq [s (:sprites world)]
+      (apply draw-image! graphics widget (map s [:image :y :x])))))
