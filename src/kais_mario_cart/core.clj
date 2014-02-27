@@ -7,16 +7,22 @@
 (defn frame []
   (JFrame. "Kai's Mario Cart"))
 
-(defn panel [on-paint]
+(defn panel [& {:keys [on-paint on-action on-key width height]
+                :or {width 1263, height 893}}]
   (proxy [JPanel ActionListener KeyListener] []
     (paintComponent [g]
       (proxy-super paintComponent g)
-      (on-paint g this))
+      (when on-paint
+        (on-paint g this)))
     (actionPerformed [e]
+      (when on-action
+        (on-action e this))
       (.repaint this))
-    (keyPressed [e])
+    (keyPressed [e]
+      (when on-key
+        (on-key (.getKeyCode e) this)))
     (getPreferredSize []
-      (Dimension. 1263 893))
+      (Dimension. width height))
     (keyReleased [e])
     (keyTyped [e])))
 
@@ -42,6 +48,27 @@
 
 (defn draw! [world]
   (fn [graphics widget]
-    (apply draw-image! graphics widget (map (:background world) [:image :y :x]))
-    (doseq [s (:sprites world)]
+    (apply draw-image! graphics widget (map (:background @world) [:image :y :x]))
+    (doseq [s (:sprites @world)]
       (apply draw-image! graphics widget (map s [:image :y :x])))))
+
+(defn world []
+  (atom {:background {:image (sprite "kais_mario_cart/world-before-door.png"), :y 0, :x 0}
+         :sprites [{:image (sprite "kais_mario_cart/jack-left.png"), :y (- 1263 168), :x (- 893 266)}]}))
+
+(defn on-key [world]
+  (fn [keycode panel]
+    (cond
+     (= keycode KeyEvent/VK_ESCAPE) (System/exit 0)
+     (= keycode KeyEvent/VK_LEFT) (do
+                                    (reset! world (update-in @world [:sprites 0 :y] #(- % 25)))
+                                    (.repaint panel))
+     (= keycode KeyEvent/VK_RIGHT) (do
+                                    (reset! world (update-in @world [:sprites 0 :y] #(+ % 25)))
+                                    (.repaint panel)))))
+
+(defn -main [& args]
+  (let [world (world)
+        p (panel :on-paint (draw! world) :on-key (on-key world))
+        t (Timer. 15 p)]
+    (show-panel! (frame) p)))
