@@ -10,12 +10,31 @@
 
 (defn sprite-info
   [_ sprite]
-  (map sprite [:y :orientation]))
+  (println (map sprite [:y :x :orientation])))
 
 (defn sprite
   "Read a BufferedImage from a file"
   [file]
   (javax.imageio.ImageIO/read (io/input-stream (io/resource file))))
+
+(defn bounding-box
+  [sprite]
+  (let [{:keys [y x]} sprite
+        image (:image sprite)]
+    [y (+ y (.getWidth image)) x (+ x (.getHeight image))]))
+
+(defn colliding? [sprite [l r b t]]
+        (let [[sl sr sb st] (bounding-box sprite)]
+          (println (str sl "..." sr " " l "..." r))
+          (println (str sb "..." st " " b "..." t))
+          (and
+           ((comp not empty?) (clojure.set/intersection (set (range sl sr)) (set (range l r))))
+           ((comp not empty?) (clojure.set/intersection (set (range sb st)) (set (range b t)))))))
+
+(defn on-stairs?
+  [sprite]
+  (let [[l r t b] (bounding-box sprite)]
+    (colliding? sprite [120 130 890 893])))
 
 (defn world
   []
@@ -27,6 +46,8 @@
                             :orientation :left
                             :y (- (.getWidth bg-image) (.getWidth jack-left-image))
                             :x (- (.getHeight bg-image) (.getHeight jack-left-image))}}
+           :terrain {:stairs {:dy 25, :dx 25
+                              :on? on-stairs?}}
            :images {:background bg-image
                     :jack-left jack-left-image
                     :jack-right jack-right-image}})))
@@ -88,6 +109,12 @@
         sprite-width (-> sprite :image .getWidth)]
     [0 (- world-width sprite-width)]))
 
+(defn direction->fn
+  [direction]
+  (cond
+   (#{:up :right} direction) +
+   :else -))
+
 (defn update-sprite [world sprite move-fn]
   (let [new-sprite (move-fn sprite)
         y (:y new-sprite)
@@ -103,12 +130,14 @@
 
 (defn move-jack-fn
   [direction world]
-  (let [y-modifier (if (= :left direction) - +)
-        distance 25]
+  (let [distance 25]
     (fn [cur-jack]
-      (-> (update-in cur-jack [:y] #(y-modifier % distance))
-          (assoc-in [:orientation] direction)
-          (assoc-in [:image] (jack-image-for direction world))))))
+      (cond
+       (= :up direction) cur-jack
+       (= :down direction) cur-jack
+       :else (-> (update-in cur-jack [:y] #((direction->fn direction) % distance))
+                 (assoc-in [:orientation] direction)
+                 (assoc-in [:image] (jack-image-for direction world)))))))
 
 (defn move-jack!
   [panel world direction]
@@ -118,13 +147,18 @@
      #(do (when @debug-fn (@debug-fn world %)) %)
      (move! panel world :jack))))
 
+(def keycode->direction {KeyEvent/VK_LEFT :left
+                         KeyEvent/VK_RIGHT :right
+                         KeyEvent/VK_UP :up
+                         KeyEvent/VK_DOWN :down})
+
 (defn on-key
   [world]
   (fn [keycode panel]
-    (cond
-     (= keycode KeyEvent/VK_ESCAPE) (System/exit 0)
-     (= keycode KeyEvent/VK_LEFT) (move-jack! panel world :left)
-     (= keycode KeyEvent/VK_RIGHT) (move-jack! panel world :right))))
+    (let [direction (keycode->direction keycode)]
+      (cond
+       (= keycode KeyEvent/VK_ESCAPE) (System/exit 0)
+       ((comp not nil?) direction) (move-jack! panel world direction)))))
 
 (defn -main
   []
