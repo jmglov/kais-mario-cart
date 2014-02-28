@@ -4,6 +4,14 @@
            (javax.swing JFrame JOptionPane JPanel Timer)
            (java.awt.event ActionListener KeyEvent KeyListener)))
 
+(def debug-fn
+  "A function taking arguments [world sprite]"
+  (atom nil))
+
+(defn sprite-info
+  [_ sprite]
+  (map sprite [:y :orientation]))
+
 (defn sprite
   "Read a BufferedImage from a file"
   [file]
@@ -75,14 +83,19 @@
   (reset! world (update-in @world [:sprites id] sprite))
   (.repaint panel))
 
+(defn sprite-y-limits [sprite world]
+  (let [world-width (-> @world :background :image .getWidth)
+        sprite-width (-> sprite :image .getWidth)]
+    [0 (- world-width sprite-width)]))
+
 (defn update-sprite [world sprite move-fn]
   (let [new-sprite (move-fn sprite)
-        sprite-y (:y new-sprite)
-        sprite-width (-> sprite :image .getWidth)
-        world-width (-> @world :background :image .getWidth)]
-    (if (and (>= sprite-y 0) (<= sprite-y (- world-width sprite-width)))
-      new-sprite
-      sprite)))
+        y (:y new-sprite)
+        [l-lim r-lim] (sprite-y-limits sprite world)]
+    (cond
+     (< y l-lim) (assoc-in new-sprite [:y] l-lim)
+     (> y r-lim) (assoc-in new-sprite [:y] r-lim)
+     :else new-sprite)))
 
 (defn jack-image-for
   [direction world]
@@ -102,7 +115,7 @@
   (let [jack (get-in @world [:sprites :jack])]
     (->>
      (update-sprite world jack (move-jack-fn direction world))
-     #(do (println %) %)
+     #(do (when @debug-fn (@debug-fn world %)) %)
      (move! panel world :jack))))
 
 (defn on-key
@@ -114,8 +127,9 @@
      (= keycode KeyEvent/VK_RIGHT) (move-jack! panel world :right))))
 
 (defn -main
-  [& args]
+  []
   (let [world (world)
         p (panel :on-paint (draw! world) :on-key (on-key world))
         t (Timer. 15 p)]
+    (reset! debug-fn sprite-info)
     (show-panel! (frame) p)))
