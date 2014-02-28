@@ -71,25 +71,39 @@
       (apply draw-image! graphics widget (map s [:image :y :x])))))
 
 (defn move!
-  "Moves a sprite in the world atom to the position returned by function (f old-value)"
-  [panel world sprite-coord f]
-  (reset! world (update-in @world sprite-coord f))
+  [panel world id sprite]
+  (reset! world (update-in @world [:sprites id] sprite))
   (.repaint panel))
 
+(defn update-sprite [world sprite move-fn]
+  (let [new-sprite (move-fn sprite)
+        sprite-y (:y new-sprite)
+        sprite-width (-> sprite :image .getWidth)
+        world-width (-> @world :background :image .getWidth)]
+    (if (and (>= sprite-y 0) (<= sprite-y (- world-width sprite-width)))
+      new-sprite
+      sprite)))
+
+(defn jack-image-for
+  [direction world]
+  (get-in @world (conj [:images] (keyword (str "jack-" (name direction))))))
+
+(defn move-jack-fn
+  [direction world]
+  (let [y-modifier (if (= :left direction) - +)
+        distance 25]
+    (fn [cur-jack]
+      (-> (update-in cur-jack [:y] #(y-modifier % distance))
+          (assoc-in [:orientation] direction)
+          (assoc-in [:image] (jack-image-for direction world))))))
+
 (defn move-jack!
-  [panel world dir]
-  (let [jack-path [:sprites :jack]
-        orientation-path (conj jack-path :orientation)
-        image-path (conj jack-path :image)
-        new-image (get-in @world (conj [:images] (keyword (str "jack-" (name dir)))))
-        update-fn (cond
-           (= :left dir) #(- % 25)
-           (= :right dir) #(+ % 25))]
-    (when-not (= dir (get-in @world orientation-path))
-      (reset! world (-> @world
-                     (assoc-in orientation-path dir)
-                     (assoc-in image-path new-image))))
-    (move! panel world [:sprites :jack :y] update-fn)))
+  [panel world direction]
+  (let [jack (get-in @world [:sprites :jack])]
+    (->>
+     (update-sprite world jack (move-jack-fn direction world))
+     #(do (println %) %)
+     (move! panel world :jack))))
 
 (defn on-key
   [world]
