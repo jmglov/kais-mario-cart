@@ -1,17 +1,40 @@
 (ns kais-mario-cart.core
   (:require [clojure.java.io :as io]
-            [clojure.set :refer [intersection]])
+            [clojure.set :refer [intersection]]
+            [clojure.string :refer [join split]]
+            [kais-mario-cart.util :refer [warn]])
   (:import (java.awt Color Dimension)
            (javax.swing JFrame JOptionPane JPanel Timer)
            (java.awt.event ActionListener KeyEvent KeyListener)))
 
-(def debug-fn
-  "A function taking arguments [world sprite]"
-  (atom nil))
+(def debug-fns
+  {:sprite-info (fn [_ sprite] (println (map sprite [:y :x :orientation])))})
 
-(defn sprite-info
-  [_ sprite]
-  (println (map sprite [:y :x :orientation])))
+(def active-debug-fns (atom []))
+
+(defn activate-debug-fn!
+  [fn-key]
+  (let [f (debug-fns fn-key)]
+    (if f
+      (swap! active-debug-fns conj f)
+      (warn (str "Debug function " fn-key " not found! Available functions are: "
+                 (join " " (map name (keys debug-fns))))))))
+
+(defn- debug
+  [world sprite retval]
+  (doseq [f @active-debug-fns]
+    (f world sprite))
+  retval)
+
+(defn debug-world
+  "Invokes all active debug functions with world and sprite as arguments, then returns world"
+  [world sprite]
+  (debug world sprite world))
+
+(defn debug-sprite
+  "Invokes all active debug functions with world and sprite as arguments, then returns sprite"
+  [world sprite]
+  (debug world sprite sprite))
 
 (defn image
   "Reads a BufferedImage from a file"
@@ -113,7 +136,7 @@
 
 (defn move!
   [panel world id sprite]
-  (reset! world (update-in @world [:sprites id] sprite))
+  (reset! world (assoc-in @world [:sprites id] sprite))
   (.repaint panel))
 
 (defn sprite-y-limits [sprite world]
@@ -156,7 +179,7 @@
   (let [jack (get-in @world [:sprites :jack])]
     (->>
      (update-sprite world jack (move-jack-fn direction world))
-     #(do (when @debug-fn (@debug-fn world %)) %)
+     (debug-sprite world)
      (move! panel world :jack))))
 
 (def keycode->direction {KeyEvent/VK_LEFT :left
@@ -173,9 +196,12 @@
        ((comp not nil?) direction) (move-jack! panel world direction)))))
 
 (defn -main
-  []
+  [& args]
   (let [world (world)
         p (panel :on-paint (draw! world) :on-key (on-key world))
-        t (Timer. 15 p)]
-    (reset! debug-fn sprite-info)
+        t (Timer. 15 p)
+        args (apply hash-map args)
+        debug-fn-keys (split (or (args "--debug") "") #",")]
+    (doseq [k debug-fn-keys]
+      (activate-debug-fn! (keyword k)))
     (show-panel! (frame) p)))
