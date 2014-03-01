@@ -1,5 +1,6 @@
 (ns kais-mario-cart.core
-  (:require [clojure.java.io :as io])
+  (:require [clojure.java.io :as io]
+            [clojure.set :refer [intersection]])
   (:import (java.awt Color Dimension)
            (javax.swing JFrame JOptionPane JPanel Timer)
            (java.awt.event ActionListener KeyEvent KeyListener)))
@@ -12,24 +13,35 @@
   [_ sprite]
   (println (map sprite [:y :x :orientation])))
 
-(defn sprite
-  "Read a BufferedImage from a file"
+(defn image
+  "Reads a BufferedImage from a file"
   [file]
   (javax.imageio.ImageIO/read (io/input-stream (io/resource file))))
 
 (defn bounding-box
+  "Returns the bounding box for a sprite as its left and right y values and bottom and
+   top x values as [l r b t]"
   [sprite]
   (let [{:keys [y x]} sprite
-        image (:image sprite)]
-    [y (+ y (.getWidth image)) x (+ x (.getHeight image))]))
+        image (:image sprite)
+        l y
+        r (+ y (.getWidth image))
+        b x
+        t (+ x (.getHeight image))]
+    [l r b t]))
 
-(defn colliding? [sprite [l r b t]]
-        (let [[sl sr sb st] (bounding-box sprite)]
-          (println (str sl "..." sr " " l "..." r))
-          (println (str sb "..." st " " b "..." t))
-          (and
-           ((comp not empty?) (clojure.set/intersection (set (range sl sr)) (set (range l r))))
-           ((comp not empty?) (clojure.set/intersection (set (range sb st)) (set (range b t)))))))
+(defn intersect?
+  "Returns true if there is an intersection between the set of numbers starting at s1 and
+   ending at s2 (exclusive at the end) and the set starting at s2 and ending at e2."
+  [[s1 e1] [s2 e2]]
+  ((comp not empty?) (intersection (set (range s1 e1)) (set (range s2 e2)))))
+
+(defn colliding?
+  "Returns true if there is a collision between a sprite and the bounding box defined by
+   left and right y values (l and r) and bottom and top x values (b and t)"
+  [sprite [l r b t]]
+  (let [[sl sr sb st] (bounding-box sprite)]
+    (and (intersect? [sl sr] [l r]) (intersect? [sb st] [b t]))))
 
 (defn on-stairs?
   [sprite]
@@ -38,9 +50,9 @@
 
 (defn world
   []
-  (let [bg-image (sprite "kais_mario_cart/world-before-door.png")
-        jack-left-image (sprite "kais_mario_cart/jack-left.png")
-        jack-right-image (sprite "kais_mario_cart/jack-right.png")]
+  (let [bg-image (image "kais_mario_cart/world-before-door.png")
+        jack-left-image (image "kais_mario_cart/jack-left.png")
+        jack-right-image (image "kais_mario_cart/jack-right.png")]
     (atom {:background {:image bg-image, :y 0, :x 0}
            :sprites {:jack {:image jack-left-image
                             :orientation :left
