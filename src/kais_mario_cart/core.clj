@@ -20,6 +20,12 @@
       (warn (str "Debug function " fn-key " not found! Available functions are: "
                  (join " " (map name (keys debug-fns))))))))
 
+(defn debug-fn-keys
+  [args]
+  (if (args "--debug")
+    (split (or (args "--debug") "") #",")
+    []))
+
 (defn- debug
   [world sprite retval]
   (doseq [f @active-debug-fns]
@@ -81,8 +87,13 @@
                             :orientation :left
                             :y (- (.getWidth bg-image) (.getWidth jack-left-image))
                             :x (- (.getHeight bg-image) (.getHeight jack-left-image))}}
-           :terrain {:stairs {:dy 25, :dx 25
-                              :on? on-stairs?}}
+           :terrain {:stairs {:on? on-stairs?
+                              :move {:up (fn [sprite]
+                                           (-> sprite
+                                               (update-in [:y] #(+ % 25))
+                                               (update-in [:x] #(- % 25))))
+                                     :down (fn [sprite]
+                                             )}}}
            :images {:background bg-image
                     :jack-left jack-left-image
                     :jack-right jack-right-image}})))
@@ -147,7 +158,7 @@
 (defn direction->fn
   [direction]
   (cond
-   (#{:up :right} direction) +
+   (#{:right :down} direction) +
    :else -))
 
 (defn update-sprite [world sprite move-fn]
@@ -168,7 +179,9 @@
   (let [distance 25]
     (fn [cur-jack]
       (cond
-       (= :up direction) cur-jack
+       (= :up direction) (if (on-stairs? cur-jack)
+                           ((-> @world :terrain :stairs :move :up) cur-jack)
+                           cur-jack)
        (= :down direction) cur-jack
        :else (-> (update-in cur-jack [:y] #((direction->fn direction) % distance))
                  (assoc-in [:orientation] direction)
@@ -200,8 +213,7 @@
   (let [world (world)
         p (panel :on-paint (draw! world) :on-key (on-key world))
         t (Timer. 15 p)
-        args (apply hash-map args)
-        debug-fn-keys (split (or (args "--debug") "") #",")]
-    (doseq [k debug-fn-keys]
+        args (apply hash-map args)]
+    (doseq [k (debug-fn-keys args)]
       (activate-debug-fn! (keyword k)))
     (show-panel! (frame) p)))
