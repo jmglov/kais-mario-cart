@@ -1,34 +1,51 @@
 (ns kais-mario-cart.debug
-  (:require [kais-mario-cart.util :refer [warn]]
-            [clojure.string :refer [join split]]))
+  (:require [kais-mario-cart.util :refer [not-nil? warn]]
+            [clojure.string :refer [join split]]
+            [clojure.tools.cli :as cli]))
 
-(def ^:private active-debug-fns (atom []))
+(def ^:private active (atom []))
 
-(def debug-fns
+(def ^:private available
   {:sprite-info (fn [_ sprite] (println (map sprite [:y :x :orientation])))})
 
-(defn debug-fn-keys
-  [args]
-  (if (args "--debug")
-    (split (or (args "--debug") "") #",")
-    []))
+(defn clear!
+  "Removes all active debug functions"
+  []
+  (reset! active []))
 
-(defn activate-debug-fn!
+(defn activate!
+  "Activates the debug function corresponding to a function key. Returns true if the
+   function key was valid."
   [fn-key]
-  (let [f (debug-fns fn-key)]
+  (let [f (or (available fn-key) (available (keyword fn-key)))
+        valid? (not-nil? f)]
     (if f
-      (swap! active-debug-fns conj f)
+      (swap! active conj [fn-key f])
       (warn (str "Debug function " fn-key " not found! Available functions are: "
-                 (join " " (map name (keys debug-fns))))))))
+                 (join " " (map name (keys available))))))
+    valid?))
 
-(defn activate-debug-fns-from-args!
+(def cli-options
+  [["-d" "--debug DEBUG_KEY1[,DEBUG_KEY2...]"
+    :default []
+    :parse-fn #(split % #",")]])
+
+(defn activate-from-args!
+  "Activates the debug functions corresponding to the value of the --debug command line argument,
+   if present. Returns true if all function keys were valid."
   [args]
-  (doseq [k (debug-fn-keys (apply hash-map args))]
-    (activate-debug-fn! (keyword k))))
+  (->>
+   (map #(activate! (keyword %)) (get-in (cli/parse-opts args cli-options) [:options :debug]))
+   (every? true?)))
+
+(defn active-fns
+  "Returns a list keys corresponding to active debug functions"
+  []
+  (map first @active))
 
 (defn- debug
   [world sprite retval]
-  (doseq [f @active-debug-fns]
+  (doseq [[_ f] @active]
     (f world sprite))
   retval)
 
