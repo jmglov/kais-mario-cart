@@ -48,52 +48,60 @@
   (javax.imageio.ImageIO/read (io/input-stream (io/resource file))))
 
 (defn bounding-box
-  "Returns the bounding box for a sprite as its left and right y values and bottom and
-   top x values as [l r b t]"
+  "Returns the bounding box for a sprite as its left and right y values and top and
+   bottom x values as [l r t b]"
   [sprite]
   (let [{:keys [y x]} sprite
         image (:image sprite)
         l y
         r (+ y (.getWidth image))
-        b x
-        t (+ x (.getHeight image))]
-    [l r b t]))
+        t x
+        b (+ x (.getHeight image))]
+    [l r t b]))
 
 (defn intersect?
-  "Returns true if there is an intersection between the set of numbers starting at s1 and
-   ending at s2 (exclusive at the end) and the set starting at s2 and ending at e2."
+  "Returns true if there is an intersection between the set of numbers starting at s1 and ending
+   at s2 (exclusive at end) and the set starting at s2 and ending at e2 (exclusive at end)."
   [[s1 e1] [s2 e2]]
   ((comp not empty?) (intersection (set (range s1 e1)) (set (range s2 e2)))))
 
 (defn colliding?
   "Returns true if there is a collision between a sprite and the bounding box defined by
    left and right y values (l and r) and bottom and top x values (b and t)"
-  [sprite [l r b t]]
-  (let [[sl sr sb st] (bounding-box sprite)]
-    (and (intersect? [sl sr] [l r]) (intersect? [sb st] [b t]))))
+  [sprite [l r t b]]
+  (let [[sl sr st sb] (bounding-box sprite)]
+    (and (intersect? [sl sr] [l r]) (intersect? [st sb] [t b]))))
 
 (defn on-stairs?
-  [sprite]
-  (let [[l r t b] (bounding-box sprite)]
-    (colliding? sprite [120 130 890 893])))
+  [stairs]
+  (fn [world sprite]
+    (let [slope (/ (- (:b stairs) (:t stairs)) (- (:r stairs) (:l stairs)))
+          [l r t b] (bounding-box sprite)]
+      (colliding? sprite [120 130 890 893]))))
+
+(defn stairs
+  [stairs {:l 100, :r 250, :t 575, :b 893}
+   stairs (merge stairs {:on? (on-stairs? stairs)})]
+
+   :move {:up (fn [sprite]
+                (-> sprite
+                    (update-in [:y] #(+ % 25))
+                    (update-in [:x] #(- % 25))))
+          :down (fn [sprite]
+                  )}  )
 
 (defn world
-  []
+  [width height]
   (let [bg-image (image "kais_mario_cart/world-before-door.png")
         jack-left-image (image "kais_mario_cart/jack-left.png")
         jack-right-image (image "kais_mario_cart/jack-right.png")]
-    (atom {:background {:image bg-image, :y 0, :x 0}
+    (atom {:width width, :height height
+           :background {:image bg-image, :y 0, :x 0}
            :sprites {:jack {:image jack-left-image
                             :orientation :left
                             :y (- (.getWidth bg-image) (.getWidth jack-left-image))
                             :x (- (.getHeight bg-image) (.getHeight jack-left-image))}}
-           :terrain {:stairs {:on? on-stairs?
-                              :move {:up (fn [sprite]
-                                           (-> sprite
-                                               (update-in [:y] #(+ % 25))
-                                               (update-in [:x] #(- % 25))))
-                                     :down (fn [sprite]
-                                             )}}}
+           :terrain {:stairs (stairs width height)}
            :images {:background bg-image
                     :jack-left jack-left-image
                     :jack-right jack-right-image}})))
