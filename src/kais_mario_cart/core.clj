@@ -72,40 +72,6 @@
   (let [[sl sr st sb] (bounding-box sprite)]
     (and (intersect? [sl sr] [l r]) (intersect? [st sb] [t b]))))
 
-(defn on-stairs?
-  [stairs]
-  (fn [world sprite]
-    (let [slope (/ (- (:b stairs) (:t stairs)) (- (:r stairs) (:l stairs)))
-          [l r t b] (bounding-box sprite)]
-      (colliding? sprite [120 130 890 893]))))
-
-(defn stairs
-  [stairs {:l 100, :r 250, :t 575, :b 893}
-   stairs (merge stairs {:on? (on-stairs? stairs)})]
-
-   :move {:up (fn [sprite]
-                (-> sprite
-                    (update-in [:y] #(+ % 25))
-                    (update-in [:x] #(- % 25))))
-          :down (fn [sprite]
-                  )}  )
-
-(defn world
-  [width height]
-  (let [bg-image (image "kais_mario_cart/world-before-door.png")
-        jack-left-image (image "kais_mario_cart/jack-left.png")
-        jack-right-image (image "kais_mario_cart/jack-right.png")]
-    (atom {:width width, :height height
-           :background {:image bg-image, :y 0, :x 0}
-           :sprites {:jack {:image jack-left-image
-                            :orientation :left
-                            :y (- (.getWidth bg-image) (.getWidth jack-left-image))
-                            :x (- (.getHeight bg-image) (.getHeight jack-left-image))}}
-           :terrain {:stairs (stairs width height)}
-           :images {:background bg-image
-                    :jack-left jack-left-image
-                    :jack-right jack-right-image}})))
-
 (defn frame
   []
   (JFrame. "Kai's Mario Cart"))
@@ -178,50 +144,15 @@
      (> y r-lim) (assoc-in new-sprite [:y] r-lim)
      :else new-sprite)))
 
-(defn jack-image-for
-  [direction world]
-  (get-in @world (conj [:images] (keyword (str "jack-" (name direction))))))
-
-(defn move-jack-fn
-  [direction world]
-  (let [distance 25]
-    (fn [cur-jack]
-      (cond
-       (= :up direction) (if (on-stairs? cur-jack)
-                           ((-> @world :terrain :stairs :move :up) cur-jack)
-                           cur-jack)
-       (= :down direction) cur-jack
-       :else (-> (update-in cur-jack [:y] #((direction->fn direction) % distance))
-                 (assoc-in [:orientation] direction)
-                 (assoc-in [:image] (jack-image-for direction world)))))))
-
-(defn move-jack!
-  [panel world direction]
-  (let [jack (get-in @world [:sprites :jack])]
-    (->>
-     (update-sprite world jack (move-jack-fn direction world))
-     (debug-sprite world)
-     (move! panel world :jack))))
-
 (def keycode->direction {KeyEvent/VK_LEFT :left
                          KeyEvent/VK_RIGHT :right
                          KeyEvent/VK_UP :up
                          KeyEvent/VK_DOWN :down})
 
-(defn on-key
-  [world]
-  (fn [keycode panel]
-    (let [direction (keycode->direction keycode)]
-      (cond
-       (= keycode KeyEvent/VK_ESCAPE) (System/exit 0)
-       ((comp not nil?) direction) (move-jack! panel world direction)))))
+(def keycode->action (merge
+                      keycode->direction
+                      {KeyEvent/VK_ESCAPE :quit}))
 
-(defn -main
-  [& args]
-  (let [world (world)
-        p (panel :on-paint (draw! world) :on-key (on-key world))
-        t (Timer. 15 p)
-        args (apply hash-map args)]
-    (doseq [k (debug-fn-keys args)]
-      (activate-debug-fn! (keyword k)))
-    (show-panel! (frame) p)))
+(defn is-action?
+  [action keycode]
+  (= action (keycode->action keycode)))
