@@ -1,5 +1,6 @@
 (ns kais-mario-cart.game
-  (:require [kais-mario-cart.core :as kmc]))
+  (:require [kais-mario-cart.core :as kmc]
+            [kais-mario-cart.debug :as debug]))
 
 (defn on-stairs?
   [stairs]
@@ -58,7 +59,7 @@
   (let [jack (get-in @world [:sprites :jack])]
     (->>
      (kmc/update-sprite world jack (move-jack-fn direction world))
-     (kmc/debug-sprite world)
+     (debug/debug-sprite world)
      (kmc/move! panel world :jack))))
 
 (defn on-key
@@ -72,8 +73,6 @@
 (defn -main
   [& args]
   (let [world (world 1263 893)
-        p (kmc/panel :on-paint (kmc/draw! world) :on-key (on-key world))
-        args (apply hash-map args)]
-    (doseq [k (kmc/debug-fn-keys args)]
-      (kmc/activate-debug-fn! (keyword k)))
+        p (kmc/panel :on-paint (kmc/draw! world) :on-key (on-key world))]
+    (debug/activate-debug-fns-from-args! args)
     (kmc/show-panel! (kmc/frame) p)))

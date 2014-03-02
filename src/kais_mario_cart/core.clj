@@ -7,41 +7,6 @@
            (javax.swing JFrame JOptionPane JPanel Timer)
            (java.awt.event ActionListener KeyEvent KeyListener)))
 
-(def debug-fns
-  {:sprite-info (fn [_ sprite] (println (map sprite [:y :x :orientation])))})
-
-(def active-debug-fns (atom []))
-
-(defn activate-debug-fn!
-  [fn-key]
-  (let [f (debug-fns fn-key)]
-    (if f
-      (swap! active-debug-fns conj f)
-      (warn (str "Debug function " fn-key " not found! Available functions are: "
-                 (join " " (map name (keys debug-fns))))))))
-
-(defn debug-fn-keys
-  [args]
-  (if (args "--debug")
-    (split (or (args "--debug") "") #",")
-    []))
-
-(defn- debug
-  [world sprite retval]
-  (doseq [f @active-debug-fns]
-    (f world sprite))
-  retval)
-
-(defn debug-world
-  "Invokes all active debug functions with world and sprite as arguments, then returns world"
-  [world sprite]
-  (debug world sprite world))
-
-(defn debug-sprite
-  "Invokes all active debug functions with world and sprite as arguments, then returns sprite"
-  [world sprite]
-  (debug world sprite sprite))
-
 (defn image
   "Reads a BufferedImage from a file"
   [file]
