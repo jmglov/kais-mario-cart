@@ -121,3 +121,48 @@
 (defn is-action?
   [action keycode]
   (= action (keycode->action keycode)))
+
+(defn image->bounding-box
+  "Returns a bounding box for an image at the specified x and y coordinate.
+  A list of actions to take on collision may be speciied as :on-collision."
+  [img & {:keys [x y] :as args}]
+  {:pre [(and x y)]}
+
+  {:x x, :y y, :w (.getWidth img), :h (.getHeight img)
+   :on-collision (or (:on-collision args) [])})
+
+(def levels (atom {}))
+(def current-level (atom nil))
+
+(defn reset-levels! []
+  (reset! levels {})
+  (reset! current-level nil))
+
+(defmacro deflevel [index & {:keys [image on-victory]}]
+  `(do
+     (doseq [[~'k ~'v] [[:image ~image] [:on-victory ~on-victory]]]
+       (assert ~'v (str ~'k " argument required")))
+     (swap! levels assoc ~index {:image (image ~image)
+                                 :is-victory? false
+                                 :on-victory ~on-victory})
+     (reset! current-level ~index)))
+
+(defmacro defelement [element-name & {:keys [image x y z speed bounding-boxes]}]
+  `(if @current-level
+     (do
+       (doseq [[~'k ~'v] [[:image ~image] [:x ~x] [:y ~y]]]
+         (assert ~'v (str ~'k " argument required")))
+
+       (let [~'element-key (keyword '~element-name)
+             ~'path [@current-level :elements ~'element-key]
+             ~'image (image ~image)]
+         (swap! levels assoc-in ~'path {:image ~'image
+                                        :z (or ~z 0)
+                                        :speed (or ~speed 0)
+                                        :bounding-boxes (or ~bounding-boxes
+                                                            (image->bounding-box ~'image :x ~x, :y ~y))})
+         (def ~element-name ~'path)))
+     (throw (IllegalStateException. "deflevel required before defelement"))))
+
+(defmacro defaction [action-name & body]
+  `(def ~action-name (fn [& ~'args] ~@body)))

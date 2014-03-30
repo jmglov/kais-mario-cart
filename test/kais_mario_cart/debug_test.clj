@@ -2,14 +2,14 @@
   (:require [clojure.test :refer :all]
             [kais-mario-cart.debug :refer :all]))
 
-(deftest test-activate-debug-fn!
+'(deftest test-activate-debug-fn!
   (testing "with valid function key"
     (is (activate-debug-fn! :sprite-info)))
 
   (testing "with invalid function key"
     (is (not (activate-debug-fn! :not-bloody-likely)))))
 
-(deftest test-activate-debug-fns-from-args!
+'(deftest test-activate-debug-fns-from-args!
   (testing "with empty args"
     (is (empty? (activate-debug-fns-from-args! []))))
   (testing "without --debug"
