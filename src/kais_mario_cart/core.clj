@@ -37,30 +37,6 @@
   (let [[sl sr st sb] (bounding-box sprite)]
     (and (intersect? [sl sr] [l r]) (intersect? [st sb] [t b]))))
 
-(defn frame
-  []
-  (JFrame. "Kai's Mario Cart"))
-
-(defn panel
-  [& {:keys [on-paint on-action on-key width height]
-      :or {width 1263, height 893}}]
-  (proxy [JPanel ActionListener KeyListener] []
-    (paintComponent [g]
-      (proxy-super paintComponent g)
-      (when on-paint
-        (on-paint g this)))
-    (actionPerformed [e]
-      (when on-action
-        (on-action e this))
-      (.repaint this))
-    (keyPressed [e]
-      (when on-key
-        (on-key (.getKeyCode e) this)))
-    (getPreferredSize []
-      (Dimension. width height))
-    (keyReleased [e])
-    (keyTyped [e])))
-
 (defn show-panel!
   [frame panel]
   (doto panel
@@ -134,6 +110,9 @@
 (def levels (atom {}))
 (def current-level (atom nil))
 
+(defn get-level []
+  (@levels @current-level))
+
 (defn reset-levels! []
   (reset! levels {})
   (reset! current-level nil))
@@ -166,3 +145,29 @@
 
 (defmacro defaction [action-name & body]
   `(def ~action-name (fn [& ~'args] ~@body)))
+
+(defn repaint [graphics widget]
+  (draw-image! graphics widget (:image (get-level)) 0 0))
+
+(defn frame
+  [title]
+  (JFrame. title))
+
+(defn panel
+  [& {:keys [on-action on-key width height]
+      :or {width 1263, height 893}}]
+  (proxy [JPanel ActionListener KeyListener] []
+    (paintComponent [g]
+      (proxy-super paintComponent g)
+      (repaint g this))
+    (actionPerformed [e]
+      (when on-action
+        (on-action e this))
+      (.repaint this))
+    (keyPressed [e]
+      (when on-key
+        (on-key (.getKeyCode e) this)))
+    (getPreferredSize []
+      (Dimension. width height))
+    (keyReleased [e])
+    (keyTyped [e])))

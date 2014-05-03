@@ -1,5 +1,5 @@
 (ns kais-mario-cart.game
-  (:require [kais-mario-cart.core :as kmc]
+  (:require [kais-mario-cart.core :as kmc :refer [deflevel]]
             [kais-mario-cart.debug :as debug]))
 
 (defn on-stairs?
@@ -70,9 +70,12 @@
        (kmc/is-action? :quit keycode) (System/exit 0)
        ((comp not nil?) direction) (move-jack! panel world direction)))))
 
+(defn img-path [img-name]
+  (str "kais_mario_cart/" img-name ".png"))
+
+(deflevel 1 :image (img-path "world-before-door") :on-victory [])
+
 (defn -main
   [& args]
-  (let [world (world 1263 893)
-        p (kmc/panel :on-paint (kmc/draw! world) :on-key (on-key world))]
-    (debug/activate-from-args! args)
-    (kmc/show-panel! (kmc/frame) p)))
+  (debug/activate-from-args! args)
+  (kmc/show-panel! (kmc/frame "Kai's Mario Cart") (kmc/panel)))
