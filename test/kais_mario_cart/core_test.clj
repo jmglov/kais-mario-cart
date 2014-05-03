@@ -61,3 +61,22 @@
 (deftest defaction
   (testing "action defined"
     (is (fn? @(kmc/defaction foo "whatever")))))
+
+(deftest defcontrol
+  (testing "devlevel required first"
+    (is (thrown-with-msg?
+         IllegalStateException #"deflevel required before defcontrol"
+         (kmc/defcontrol foo 1 "whatever"))))
+
+  (testing "control defined"
+    (let [a (atom 1)
+          b (atom {})]
+      (kmc/deflevel 1 :image img-name, :on-victory [])
+      (kmc/defcontrol do-stuff 27
+        (swap! a inc)
+        (swap! b assoc-in [:a] @a))
+      (let [control (get-in @kmc/levels [1 :controls 27])]
+        (is (fn? control))
+        (control)
+        (is (= 2 @a))
+        (is (= {:a 2} @b))))))

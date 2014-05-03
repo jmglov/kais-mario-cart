@@ -146,6 +146,13 @@
 (defmacro defaction [action-name & body]
   `(def ~action-name (fn [& ~'args] ~@body)))
 
+(defmacro defcontrol [control-name keycode & body]
+  `(if @current-level
+     (swap! levels assoc-in
+            [@current-level :controls ~keycode]
+            (fn [& ~'args] ~@body))
+     (throw (IllegalStateException. "deflevel required before defcontrol"))))
+
 (defn repaint [graphics widget]
   (draw-image! graphics widget (:image (get-level)) 0 0))
 
