@@ -74,5 +74,5 @@
   [& args]
   (let [world (world 1263 893)
         p (kmc/panel :on-paint (kmc/draw! world) :on-key (on-key world))]
-    (debug/activate-debug-fns-from-args! args)
+    (debug/activate-from-args! args)
     (kmc/show-panel! (kmc/frame) p)))
