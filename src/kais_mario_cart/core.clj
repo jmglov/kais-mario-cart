@@ -149,11 +149,11 @@
 (defn repaint [graphics widget]
   (draw-image! graphics widget (:image (get-level)) 0 0))
 
-(defn frame
+(defn make-frame
   [title]
   (JFrame. title))
 
-(defn panel
+(defn make-panel
   [& {:keys [on-action on-key width height]
       :or {width 1263, height 893}}]
   (proxy [JPanel ActionListener KeyListener] []

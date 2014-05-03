@@ -78,4 +78,4 @@
 (defn -main
   [& args]
   (debug/activate-from-args! args)
-  (kmc/show-panel! (kmc/frame "Kai's Mario Cart") (kmc/panel)))
+  (kmc/show-panel! (kmc/make-frame "Kai's Mario Cart") (kmc/make-panel)))
