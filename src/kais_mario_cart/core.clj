@@ -139,7 +139,7 @@
                                         :z (or ~z 0)
                                         :speed (or ~speed 0)
                                         :bounding-boxes (or ~bounding-boxes
-                                                            (image->bounding-box ~'image :x ~x, :y ~y))})
+                                                            [(image->bounding-box ~'image :x ~x, :y ~y)])})
          (def ~element-name ~'path)))
      (throw (IllegalStateException. "deflevel required before defelement"))))
 
@@ -178,3 +178,17 @@
       (Dimension. width height))
     (keyReleased [e])
     (keyTyped [e])))
+
+(defn move-element [element x y]
+  (let [bounding-boxes (:bounding-boxes element)]
+    (if (not= 1 (count bounding-boxes))
+      (throw (IllegalArgumentException. "cannot move element with multiple bounding boxes"))
+      (let [bounding-box (first bounding-boxes)
+            new-x (+ (:x bounding-box) x)
+            new-y (+ (:y bounding-box) y)]
+        (assoc element :bounding-boxes [(merge bounding-box {:x new-x, :y new-y})])))))
+
+(defn move [element-path & {:keys [x y]}]
+  (let [x (or x 0)
+        y (or y 0)]
+    (swap! levels update-in element-path move-element x y)))

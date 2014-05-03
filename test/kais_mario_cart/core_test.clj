@@ -80,3 +80,28 @@
         (control)
         (is (= 2 @a))
         (is (= {:a 2} @b))))))
+
+(deftest move
+  (kmc/deflevel 1 :image img-name :on-victory [])
+
+  (testing "can't move element with more than one bounding box"
+    (kmc/defelement boxes :image img-name, :x 1, :y 1, :bounding-boxes [{} {}])
+    (is (thrown-with-msg?
+         IllegalArgumentException #"cannot move element with multiple bounding boxes"
+         (kmc/move boxes))))
+
+  (defn xy [element]
+    (-> (get-in @kmc/levels element)
+        :bounding-boxes
+        first
+        (map [:x :y])))
+
+  (testing "x and y components of move default to 0"
+    (kmc/defelement unmoved :image img-name, :x 1, :y 1)
+    (kmc/move unmoved)
+    (is (= [1 1] (xy unmoved))))
+
+  (testing "element is moved"
+    (kmc/defelement moved :image img-name, :x 1, :y 1)
+    (kmc/move moved :x 5 :y -1)
+    (is (= [6 0] (xy moved)))))
