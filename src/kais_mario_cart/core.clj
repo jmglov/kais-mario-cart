@@ -153,8 +153,15 @@
             (fn [& ~'args] ~@body))
      (throw (IllegalStateException. "deflevel required before defcontrol"))))
 
+(defn xy [obj]
+  (let [lookup (fn [dim] (or (obj dim) (-> obj :bounding-boxes first dim) 0))]
+    (map lookup [:x :y])))
+
 (defn repaint [graphics widget]
-  (draw-image! graphics widget (:image (get-level)) 0 0))
+  (let [level (get-level)]
+    (draw-image! graphics widget (:image level) 0 0)
+    (doseq [[_ element] (:elements level)]
+      (apply draw-image! (concat [graphics widget] [(:image element)] (xy element))))))
 
 (defn make-frame
   [title]

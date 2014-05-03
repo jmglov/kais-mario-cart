@@ -1,5 +1,5 @@
 (ns kais-mario-cart.game
-  (:require [kais-mario-cart.core :as kmc :refer [deflevel]]
+  (:require [kais-mario-cart.core :as kmc :refer [deflevel defelement defcontrol]]
             [kais-mario-cart.debug :as debug]))
 
 (defn on-stairs?
@@ -74,6 +74,7 @@
   (str "kais_mario_cart/" img-name ".png"))
 
 (deflevel 1 :image (img-path "world-before-door") :on-victory [])
+(defelement jack :image (img-path "jack-left") :x 1095 :y 627)
 
 (defn -main
   [& args]
