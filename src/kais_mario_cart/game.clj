@@ -1,6 +1,7 @@
 (ns kais-mario-cart.game
   (:require [kais-mario-cart.core :as kmc :refer [deflevel defelement defcontrol]]
-            [kais-mario-cart.debug :as debug]))
+            [kais-mario-cart.debug :as debug])
+  (:import java.awt.event.KeyEvent))
 
 (defn on-stairs?
   [stairs]
@@ -75,6 +76,8 @@
 
 (deflevel 1 :image (img-path "world-before-door") :on-victory [])
 (defelement jack :image (img-path "jack-left") :x 1095 :y 627)
+(defcontrol move-jack-left KeyEvent/VK_LEFT
+  (kmc/move jack :x -50))
 
 (defn -main
   [& args]

@@ -163,26 +163,34 @@
     (doseq [[_ element] (:elements level)]
       (apply draw-image! (concat [graphics widget] [(:image element)] (xy element))))))
 
+(defn operate [keycode widget]
+  (doseq [[_ control] (filter #(= keycode (key %)) (:controls (get-level)))]
+    (control))
+  (repaint (.getGraphics widget) widget))
+
 (defn make-frame
   [title]
   (JFrame. title))
 
 (defn make-panel
-  [& {:keys [on-action on-key width height]
+  [& {:keys [on-action width height]
       :or {width 1263, height 893}}]
   (proxy [JPanel ActionListener KeyListener] []
     (paintComponent [g]
       (proxy-super paintComponent g)
       (repaint g this))
+
     (actionPerformed [e]
       (when on-action
         (on-action e this))
       (.repaint this))
+
     (keyPressed [e]
-      (when on-key
-        (on-key (.getKeyCode e) this)))
+      (operate (.getKeyCode e) this))
+
     (getPreferredSize []
       (Dimension. width height))
+
     (keyReleased [e])
     (keyTyped [e])))
 
